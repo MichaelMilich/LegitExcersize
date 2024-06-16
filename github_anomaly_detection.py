@@ -4,6 +4,8 @@ import hmac
 import hashlib
 import time
 
+from hook_handler import PushHandler
+
 # Load configuration
 with open('private_config.json') as config_file:
     config = json.load(config_file)
@@ -24,6 +26,8 @@ def webhook():
     if not verify_signature(payload, signature):
         return 'Signature mismatch', 401
 
+    handlers={"push":PushHandler()}
+
     event = request.headers.get('X-GitHub-Event')
     data = request.json
 
@@ -40,6 +44,9 @@ def webhook():
         file_name = f"repository_{timestr}.json"
     elif event == 'push':
         file_name = f"push_{timestr}.json"
+
+    if event in handlers:
+        handlers[event].check_post(event,data)
 
     with open(file_name, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
