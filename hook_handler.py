@@ -1,7 +1,11 @@
+
+
 from abc import ABC
-from typing import Callable
+from typing import Callable, Union
 import time
 from datetime import datetime, timedelta
+
+from basic_logger import BasicLogger
 
 
 class AbstractHookHandler(ABC):
@@ -14,7 +18,7 @@ class AbstractHookHandler(ABC):
         4) optional - further logger provided by outside object that will further save the data somewhere
     """
 
-    def __init__(self, event_name: str, outside_logger=None):
+    def __init__(self, event_name: str, outside_logger=Union[None,BasicLogger]):
         self.event_name = event_name
         self.cases: {str: Callable[[dict], bool]} = dict()
         self.logger = outside_logger
@@ -25,7 +29,7 @@ class AbstractHookHandler(ABC):
             if not hasattr(self.logger, 'log') or not callable(getattr(self.logger, 'log')):
                 raise ValueError("Logger must have a callable 'log' method.")
 
-    def alert(self, causes: []):
+    def alert(self, causes: [], data):
         """
         The alert function will show in the terminal the anomaly and all its causes in the form of
         'time of anomaly' causes : 1).. 2)... 3)...
@@ -39,7 +43,7 @@ class AbstractHookHandler(ABC):
         print(result)
 
         if self.logger is not None:
-            self.logger.log(self.event_name, causes)
+            self.logger.log(self.event_name, causes, data)
 
     def check_post(self, event, data):
         """
@@ -55,7 +59,7 @@ class AbstractHookHandler(ABC):
             if case(data):
                 causes.append(cause)
         if causes:
-            self.alert(causes)
+            self.alert(causes, data)
 
 
 class PushHandler(AbstractHookHandler):
