@@ -2,58 +2,52 @@ import json
 from flask import Flask, request, jsonify
 import hmac
 import hashlib
-import time
+from hook_handler import PushHandler, TeamHandler, RepoHandler
 
-from hook_handler import PushHandler
 
-# Load configuration
-with open('private_config.json') as config_file:
-    config = json.load(config_file)
+class AnomalyServer:
+    """
+    The basic server object that holds sets up the route and deals with all the web hook post events.
+    Uses various handlers to call handle the different events.
+    """
+    def __init__(self):
+        self.secret = self.get_secret()
+        self.handlers = {
+            "push": PushHandler(),
+            "team": TeamHandler(),
+            "repository": RepoHandler()
+        }
+        self.app = Flask(__name__)
+        self.setup_routes()
 
-GITHUB_SECRET = config['GITHUB_SECRET']
+    def get_secret(self):
+        # Load configuration
+        with open('private_config.json') as config_file:
+            config = json.load(config_file)
+        return config['GITHUB_SECRET']
 
-app = Flask(__name__)
+    def setup_routes(self):
+        @self.app.route('/webhook', methods=['POST'])
+        def webhook():
+            payload = request.get_data()
+            signature = request.headers.get('X-Hub-Signature-256')
 
-def verify_signature(payload, signature):
-    mac = hmac.new(GITHUB_SECRET.encode(), payload, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(f'sha256={mac}', signature)
+            if not self.verify_signature(payload, signature):
+                return 'Signature mismatch', 401
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    payload = request.get_data()
-    signature = request.headers.get('X-Hub-Signature-256')
+            event = request.headers.get('X-GitHub-Event')
+            data = request.json
 
-    if not verify_signature(payload, signature):
-        return 'Signature mismatch', 401
+            if event in self.handlers:
+                self.handlers[event].check_post(event, data)
 
-    handlers={"push":PushHandler()}
+            return jsonify({'status': 'received'}), 200
 
-    event = request.headers.get('X-GitHub-Event')
-    data = request.json
-
-    print(f"event is = {event}")
-
-    timestr = time.strftime("%Y%m%d-%H%M%S")
-    file_name= f"{timestr}.json"
-
-    if event == 'issues':
-        file_name = f"issues_{timestr}.json"
-    elif event == 'team':
-        file_name = f"team_{timestr}.json"
-    elif event == 'repository':
-        file_name = f"repository_{timestr}.json"
-    elif event == 'push':
-        file_name = f"push_{timestr}.json"
-
-    if event in handlers:
-        handlers[event].check_post(event,data)
-
-    with open(file_name, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-    return jsonify({'status': 'received'}), 200
-
+    def verify_signature(self, payload, signature):
+        mac = hmac.new(self.secret.encode(), payload, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(f'sha256={mac}', signature)
 
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    server = AnomalyServer()
+    server.app.run(port=5000)
