@@ -23,4 +23,5 @@ currently the system is developed on linux - ubuntu 22 and is tested on this env
    2. This is a must for the code to run.
 3. run `python3 github_anomaly_detection.py` to start the command line application
    1. **note:** this instruction assumes that you already have forwarded the webhooks to localhost.
+   2. in my case I used the following site to forward the webhooks : `ngrok http --domain=model-weasel-hopefully.ngrok-free.app 5000`
 
