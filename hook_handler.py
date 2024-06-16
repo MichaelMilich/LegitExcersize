@@ -111,7 +111,7 @@ class TeamHandler(AbstractHookHandler):
             return False
         if type(team["name"]) != str:
             return False
-        return "hacker" in team["name"]
+        return team["name"].startswith("hacker")
 
 
 class RepoHandler(AbstractHookHandler):
