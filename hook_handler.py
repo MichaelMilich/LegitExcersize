@@ -5,7 +5,7 @@ from typing import Callable, Union
 import time
 from datetime import datetime, timedelta
 
-from basic_logger import BasicLogger
+from basic_logger import AbstractLogger
 
 
 class AbstractHookHandler(ABC):
@@ -18,7 +18,7 @@ class AbstractHookHandler(ABC):
         4) optional - further logger provided by outside object that will further save the data somewhere
     """
 
-    def __init__(self, event_name: str, outside_logger=Union[None,BasicLogger]):
+    def __init__(self, event_name: str, outside_logger=Union[None,AbstractLogger]):
         self.event_name = event_name
         self.cases: {str: Callable[[dict], bool]} = dict()
         self.logger = outside_logger
